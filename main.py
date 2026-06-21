@@ -4,8 +4,26 @@ from discord.ext import commands
 import asyncio
 import os
 from dotenv import load_dotenv
+from flask import Flask
+from threading import Thread
 
-# Tải cấu hình từ file .env
+# --- CẤU HÌNH WEB SERVER GIẢ ĐỂ TREO RENDER 24/7 ---
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Bot đang hoạt động ổn định!"
+
+def run_web_server():
+    # Render sẽ tự động gán cổng qua biến môi trường PORT, nếu không có sẽ dùng 8080
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port)
+
+def keep_alive():
+    t = Thread(target=run_web_server)
+    t.start()
+
+# --- KHỞI TẠO BOT DISCORD ---
 load_dotenv()
 
 intents = discord.Intents.default()
@@ -14,7 +32,6 @@ intents.members = True
 
 bot = commands.Bot(command_prefix='/', intents=intents)
 
-# --- PHẦN 1: ĐỊNH NGHĨA GIAO DIỆN MENU ---
 class MenuQuanLyView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -57,7 +74,6 @@ class MenuQuanLyView(discord.ui.View):
             )
             await interaction.response.send_message(embed=embed, ephemeral=True)
 
-# --- PHẦN 2: CÁC SỰ KIỆN VÀ LỆNH CỦA BOT ---
 @bot.event
 async def on_ready():
     print(f'Bot {bot.user.name} đã sẵn sàng hoạt động!')
@@ -118,6 +134,8 @@ async def permission_error(ctx, error):
     if isinstance(error, commands.MissingPermissions):
         await ctx.send("Bạn không có quyền `Manage Messages` để dùng lệnh này!", delete_after=5)
 
-# Chạy bot bằng token lấy từ file .env
+# Kích hoạt Web Server trước khi chạy Bot
+keep_alive()
+
 TOKEN = os.getenv("DISCORD_TOKEN")
 bot.run(TOKEN)
